@@ -2,7 +2,7 @@
  * 급식 + 시간표 통합 관리 시스템
  * 1단계: 평일 날짜 페이지 일괄 생성
  * 2단계: 급식 메뉴 업데이트 (NEIS API → 기존 페이지 patch)
- * 3단계: 시간표 이미지 삽입 (선택속성 1~7 → 이미지 블록)
+ * 3단계: 시간표 이미지 삽입 (선택속성 1~8 → 이미지 블록)
  */
 
 function onOpen() {
@@ -36,7 +36,7 @@ function getConfig() {
   return PropertiesService.getScriptProperties().getProperties();
 }
 
-// ===== 이미지 URL 매핑 (GitHub 등에 업로드 후 수정) =====
+// ===== 이미지 URL 매핑 =====
 const TIMETABLE_IMAGES = {
   '1': 'https://raw.githubusercontent.com/getbetterwithme/meal-to-notion/main/timetable/1.png',
   '2': 'https://raw.githubusercontent.com/getbetterwithme/meal-to-notion/main/timetable/2.png',
@@ -48,12 +48,13 @@ const TIMETABLE_IMAGES = {
   '8': 'https://raw.githubusercontent.com/getbetterwithme/meal-to-notion/main/timetable/8.png'
 };
 
+const API_DELAY = 150; // Notion rate limit: 3req/s, 150ms면 안전
+
 // ===== 트리거 전용: 매일 실행, 20일~말일만 동작 =====
 function scheduledNextMonthUpdate() {
   const now = new Date();
   const today = now.getDate();
 
-  // 20일 이전이면 스킵
   if (today < 20) {
     Logger.log(`[자동실행] ${today}일 — 20일 이전이므로 스킵`);
     return;
@@ -64,8 +65,11 @@ function scheduledNextMonthUpdate() {
 
   Logger.log(`[자동실행] ${today}일, 타겟 연월: ${yearMonth}`);
 
-  createMonthPages(yearMonth);  // 이미 있으면 스킵됨
-  updateMealData(yearMonth);    // 이미 메뉴 있으면 덮어쓰지만 동일 데이터
+  const config = getConfig();
+  const pagesMap = getNotionPagesMap(yearMonth, config);
+
+  createMonthPages(yearMonth, config, pagesMap);
+  updateMealData(yearMonth, config, pagesMap);
   Logger.log(`[자동실행] ${yearMonth} 완료`);
 }
 
@@ -73,21 +77,26 @@ function scheduledNextMonthUpdate() {
 function manualCreatePages() {
   const yearMonth = promptYearMonth();
   if (!yearMonth) return;
-  const count = createMonthPages(yearMonth);
+  const config = getConfig();
+  const pagesMap = getNotionPagesMap(yearMonth, config);
+  const count = createMonthPages(yearMonth, config, pagesMap);
   SpreadsheetApp.getUi().alert(`${yearMonth} 날짜 페이지 ${count}개 생성 완료`);
 }
 
 function manualUpdateMeals() {
   const yearMonth = promptYearMonth();
   if (!yearMonth) return;
-  const count = updateMealData(yearMonth);
+  const config = getConfig();
+  const pagesMap = getNotionPagesMap(yearMonth, config);
+  const count = updateMealData(yearMonth, config, pagesMap);
   SpreadsheetApp.getUi().alert(`${yearMonth} 급식 메뉴 ${count}건 업데이트 완료`);
 }
 
 function manualUpdateTimetable() {
   const yearMonth = promptYearMonth();
   if (!yearMonth) return;
-  const count = updateTimetableImages(yearMonth);
+  const config = getConfig();
+  const count = updateTimetableImages(yearMonth, config);
   SpreadsheetApp.getUi().alert(`${yearMonth} 시간표 이미지 ${count}건 삽입 완료`);
 }
 
@@ -95,10 +104,17 @@ function manualFullUpdate() {
   const yearMonth = promptYearMonth();
   if (!yearMonth) return;
   const ui = SpreadsheetApp.getUi();
+  const config = getConfig();
 
-  const pages = createMonthPages(yearMonth);
-  const meals = updateMealData(yearMonth);
-  const images = updateTimetableImages(yearMonth);
+  // pagesMap 1번만 조회, 1단계 후 갱신
+  let pagesMap = getNotionPagesMap(yearMonth, config);
+  const pages = createMonthPages(yearMonth, config, pagesMap);
+
+  // 1단계에서 새 페이지가 생겼으면 맵 갱신
+  if (pages > 0) pagesMap = getNotionPagesMap(yearMonth, config);
+
+  const meals = updateMealData(yearMonth, config, pagesMap);
+  const images = updateTimetableImages(yearMonth, config);
 
   ui.alert(`${yearMonth} 전체 완료\n- 페이지 생성: ${pages}건\n- 급식 업데이트: ${meals}건\n- 시간표 이미지: ${images}건`);
 }
@@ -116,10 +132,10 @@ function promptYearMonth() {
 }
 
 // ===== 1단계: 평일 날짜 페이지 생성 + 시트 기록 =====
-function createMonthPages(yearMonth) {
-  const config = getConfig();
+function createMonthPages(yearMonth, config, existingMap) {
+  config = config || getConfig();
+  existingMap = existingMap || getNotionPagesMap(yearMonth, config);
   const weekdays = getWeekdays(yearMonth);
-  const existingMap = getNotionPagesMap(yearMonth, config);
 
   // 스프레드시트에 해당 월 시트 생성
   const spreadsheet = SpreadsheetApp.openById(config.SPREADSHEET_ID);
@@ -141,34 +157,52 @@ function createMonthPages(yearMonth) {
   let created = 0;
 
   for (const dateStr of weekdays) {
-    // Notion에 페이지 생성 (없으면)
     let pageId = existingMap[dateStr];
     if (!pageId) {
       pageId = createNotionPage(dateStr, yearMonth, config);
-      if (pageId) created++;
-      Utilities.sleep(400);
+      if (pageId) {
+        created++;
+        existingMap[dateStr] = pageId;
+      }
+      Utilities.sleep(API_DELAY);
     }
 
-    // 시트에 행 추가 (없으면)
     if (!sheetDates.has(dateStr) && pageId) {
       sheet.appendRow([dateStr, '', yearMonth, pageId, '']);
     }
   }
 
-  Logger.log(`[1단계] ${yearMonth} 페이지 ${created}개 생성 (기존 ${Object.keys(existingMap).length}개)`);
+  Logger.log(`[1단계] ${yearMonth} 페이지 ${created}개 생성 (기존 ${Object.keys(existingMap).length - created}개)`);
   return created;
 }
 
 // ===== 2단계: 급식 메뉴 업데이트 =====
-function updateMealData(yearMonth) {
-  const config = getConfig();
+function updateMealData(yearMonth, config, pagesMap) {
+  config = config || getConfig();
   const meals = getMonthlyMeals(yearMonth, config);
   if (!meals || meals.length === 0) {
     Logger.log(`[2단계] ${yearMonth} 급식 데이터 없음`);
     return 0;
   }
 
-  const pagesMap = getNotionPagesMap(yearMonth, config);
+  pagesMap = pagesMap || getNotionPagesMap(yearMonth, config);
+
+  // 시트에도 메뉴 반영
+  const spreadsheet = SpreadsheetApp.openById(config.SPREADSHEET_ID);
+  const sheet = spreadsheet.getSheetByName(yearMonth);
+  let sheetData = null;
+  let sheetDateMap = {};
+  if (sheet) {
+    sheetData = sheet.getDataRange().getValues();
+    for (let i = 1; i < sheetData.length; i++) {
+      const d = sheetData[i][0];
+      const dateStr = (d instanceof Date)
+        ? Utilities.formatDate(d, Session.getScriptTimeZone(), "yyyy-MM-dd")
+        : String(d).substring(0, 10);
+      sheetDateMap[dateStr] = i + 1; // 행 번호 (1-indexed)
+    }
+  }
+
   let updated = 0;
 
   for (const meal of meals) {
@@ -182,8 +216,14 @@ function updateMealData(yearMonth) {
       "메뉴": { rich_text: [{ text: { content: meal.menu } }] }
     }, config);
 
-    if (success) updated++;
-    Utilities.sleep(400);
+    if (success) {
+      updated++;
+      // 시트에도 메뉴 기록
+      if (sheet && sheetDateMap[meal.date]) {
+        sheet.getRange(sheetDateMap[meal.date], 2).setValue(meal.menu);
+      }
+    }
+    Utilities.sleep(API_DELAY);
   }
 
   Logger.log(`[2단계] ${yearMonth} 급식 ${updated}건 업데이트`);
@@ -191,31 +231,27 @@ function updateMealData(yearMonth) {
 }
 
 // ===== 3단계: 시간표 이미지 삽입 =====
-function updateTimetableImages(yearMonth) {
-  const config = getConfig();
+// getNotionPagesMap에서 시간표 속성도 함께 가져와서 개별 조회 제거
+function updateTimetableImages(yearMonth, config) {
+  config = config || getConfig();
   const timetableProp = config.TIMETABLE_PROP_NAME || '시간표';
-  const pagesMap = getNotionPagesMap(yearMonth, config);
+  const pagesWithTimetable = getNotionPagesMapFull(yearMonth, timetableProp, config);
   let inserted = 0;
 
-  for (const [dateStr, pageId] of Object.entries(pagesMap)) {
-    // 페이지 상세 조회하여 시간표 속성값 확인
-    const pageData = getNotionPage(pageId, config);
-    if (!pageData) continue;
+  for (const page of pagesWithTimetable) {
+    if (!page.timetableValue) continue; // 시간표 미지정
 
-    const selectProp = pageData.properties[timetableProp]?.select;
-    if (!selectProp || !selectProp.name) continue; // 시간표 미지정
-
-    const imageUrl = TIMETABLE_IMAGES[selectProp.name];
-    if (!imageUrl) continue; // 매핑 없음
+    const imageUrl = TIMETABLE_IMAGES[page.timetableValue];
+    if (!imageUrl) continue;
 
     // 이미 이미지 블록이 있는지 확인
-    const existingBlocks = getPageBlocks(pageId, config);
+    const existingBlocks = getPageBlocks(page.id, config);
     const hasImage = existingBlocks.some(b => b.type === 'image');
-    if (hasImage) continue; // 이미 이미지가 있으면 스킵
+    if (hasImage) continue;
 
-    const success = appendImageBlock(pageId, imageUrl, config);
+    const success = appendImageBlock(page.id, imageUrl, config);
     if (success) inserted++;
-    Utilities.sleep(400);
+    Utilities.sleep(API_DELAY);
   }
 
   Logger.log(`[3단계] ${yearMonth} 시간표 이미지 ${inserted}건 삽입`);
@@ -232,7 +268,7 @@ function getWeekdays(yearMonth) {
   for (let d = 1; d <= lastDay; d++) {
     const date = new Date(year, month, d);
     const day = date.getDay();
-    if (day >= 1 && day <= 5) { // 월~금
+    if (day >= 1 && day <= 5) {
       const dateStr = Utilities.formatDate(date, Session.getScriptTimeZone(), "yyyy-MM-dd");
       dates.push(dateStr);
     }
@@ -240,7 +276,7 @@ function getWeekdays(yearMonth) {
   return dates;
 }
 
-// ===== 헬퍼: Notion DB에서 해당 월 페이지 맵 조회 =====
+// ===== 헬퍼: Notion DB 페이지 맵 조회 (날짜 → pageId) =====
 function getNotionPagesMap(yearMonth, config) {
   const url = `https://api.notion.com/v1/databases/${config.NOTION_DB_ID}/query`;
   const map = {};
@@ -250,10 +286,7 @@ function getNotionPagesMap(yearMonth, config) {
   while (hasMore) {
     const body = {
       page_size: 100,
-      filter: {
-        property: "Month",
-        select: { equals: String(yearMonth) }
-      }
+      filter: { property: "Month", select: { equals: String(yearMonth) } }
     };
     if (startCursor) body.start_cursor = startCursor;
 
@@ -282,6 +315,52 @@ function getNotionPagesMap(yearMonth, config) {
     }
   }
   return map;
+}
+
+// ===== 헬퍼: Notion DB 페이지 + 시간표 속성 함께 조회 (3단계용) =====
+function getNotionPagesMapFull(yearMonth, timetableProp, config) {
+  const url = `https://api.notion.com/v1/databases/${config.NOTION_DB_ID}/query`;
+  const pages = [];
+  let hasMore = true;
+  let startCursor = undefined;
+
+  while (hasMore) {
+    const body = {
+      page_size: 100,
+      filter: { property: "Month", select: { equals: String(yearMonth) } }
+    };
+    if (startCursor) body.start_cursor = startCursor;
+
+    const options = {
+      method: "post",
+      headers: {
+        "Authorization": `Bearer ${config.NOTION_TOKEN}`,
+        "Notion-Version": "2022-06-28",
+        "Content-Type": "application/json"
+      },
+      payload: JSON.stringify(body),
+      muteHttpExceptions: true
+    };
+
+    try {
+      const res = JSON.parse(UrlFetchApp.fetch(url, options).getContentText());
+      (res.results || []).forEach(p => {
+        const dateStart = p.properties["날짜"]?.date?.start;
+        const timetableSelect = p.properties[timetableProp]?.select;
+        pages.push({
+          id: p.id,
+          date: dateStart,
+          timetableValue: timetableSelect ? timetableSelect.name : null
+        });
+      });
+      hasMore = res.has_more;
+      startCursor = res.next_cursor;
+    } catch (e) {
+      Logger.log(`getNotionPagesMapFull 오류: ${e}`);
+      break;
+    }
+  }
+  return pages;
 }
 
 // ===== 헬퍼: Notion 페이지 생성 (빈 페이지) =====
@@ -330,24 +409,6 @@ function patchNotionPage(pageId, properties, config) {
     const res = UrlFetchApp.fetch(url, options);
     return res.getResponseCode() === 200;
   } catch (e) { return false; }
-}
-
-// ===== 헬퍼: Notion 페이지 상세 조회 =====
-function getNotionPage(pageId, config) {
-  const url = `https://api.notion.com/v1/pages/${pageId}`;
-  const options = {
-    method: "get",
-    headers: {
-      "Authorization": `Bearer ${config.NOTION_TOKEN}`,
-      "Notion-Version": "2022-06-28"
-    },
-    muteHttpExceptions: true
-  };
-  try {
-    const res = UrlFetchApp.fetch(url, options);
-    if (res.getResponseCode() === 200) return JSON.parse(res.getContentText());
-    return null;
-  } catch (e) { return null; }
 }
 
 // ===== 헬퍼: 페이지 블록 목록 조회 =====
