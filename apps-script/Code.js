@@ -115,19 +115,44 @@ function promptYearMonth() {
   return yearMonth;
 }
 
-// ===== 1단계: 평일 날짜 페이지 생성 =====
+// ===== 1단계: 평일 날짜 페이지 생성 + 시트 기록 =====
 function createMonthPages(yearMonth) {
   const config = getConfig();
   const weekdays = getWeekdays(yearMonth);
   const existingMap = getNotionPagesMap(yearMonth, config);
+
+  // 스프레드시트에 해당 월 시트 생성
+  const spreadsheet = SpreadsheetApp.openById(config.SPREADSHEET_ID);
+  let sheet = spreadsheet.getSheetByName(yearMonth);
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet(yearMonth);
+    sheet.appendRow(['날짜', '메뉴', '연월', '노션페이지ID', '시간표']);
+  }
+
+  // 시트에 이미 있는 날짜 확인
+  const sheetData = sheet.getDataRange().getValues();
+  const sheetDates = new Set(sheetData.slice(1).map(row => {
+    const d = row[0];
+    return (d instanceof Date)
+      ? Utilities.formatDate(d, Session.getScriptTimeZone(), "yyyy-MM-dd")
+      : String(d).substring(0, 10);
+  }).filter(d => d.length === 10));
+
   let created = 0;
 
   for (const dateStr of weekdays) {
-    if (existingMap[dateStr]) continue; // 이미 존재
+    // Notion에 페이지 생성 (없으면)
+    let pageId = existingMap[dateStr];
+    if (!pageId) {
+      pageId = createNotionPage(dateStr, yearMonth, config);
+      if (pageId) created++;
+      Utilities.sleep(400);
+    }
 
-    const pageId = createNotionPage(dateStr, yearMonth, config);
-    if (pageId) created++;
-    Utilities.sleep(400);
+    // 시트에 행 추가 (없으면)
+    if (!sheetDates.has(dateStr) && pageId) {
+      sheet.appendRow([dateStr, '', yearMonth, pageId, '']);
+    }
   }
 
   Logger.log(`[1단계] ${yearMonth} 페이지 ${created}개 생성 (기존 ${Object.keys(existingMap).length}개)`);
