@@ -517,3 +517,108 @@ function getMonthlyMeals(yearMonth, config) {
     });
   } catch (e) { return null; }
 }
+
+// ===== 사용설명서 시트 생성 =====
+function writeManualSheet() {
+  const config = getConfig();
+  const ss = SpreadsheetApp.openById(config.SPREADSHEET_ID);
+  let sheet = ss.getSheetByName('사용설명서');
+  if (sheet) sheet.clear();
+  else sheet = ss.insertSheet('사용설명서', 0);
+
+  sheet.setColumnWidth(1, 200);
+  sheet.setColumnWidth(2, 500);
+
+  const hdrBg = '#1a73e8';
+  const hdrFont = '#ffffff';
+  const secBg = '#e8f0fe';
+  const warnBg = '#fff8e1';
+
+  let r = 1;
+
+  // 제목
+  sheet.getRange(r, 1, 1, 2).merge()
+    .setValue('급식+시간표 통합 관리 시스템 사용 설명서')
+    .setFontSize(16).setFontWeight('bold').setBackground('#f1f3f4')
+    .setHorizontalAlignment('center');
+  sheet.setRowHeight(r, 40);
+  r += 2;
+
+  // --- 메뉴 구성 ---
+  r = writeSection(sheet, r, '메뉴 구성', secBg);
+  r = writeTableHeader(sheet, r, ['메뉴', '기능'], hdrBg, hdrFont);
+  r = writeTableRow(sheet, r, ['1. 날짜 페이지 생성', '해당 월 평일(월~금) 페이지를 노션 DB에 생성\n화목→시간표 "1", 월수금→시간표 "2" 자동 입력']);
+  r = writeTableRow(sheet, r, ['2. 급식 메뉴 업데이트', 'NEIS API에서 급식 데이터를 가져와 기존 노션 페이지에 메뉴 업데이트']);
+  r = writeTableRow(sheet, r, ['3. 시간표 이미지 삽입', '각 페이지의 시간표 속성값(1~8)을 읽어 해당 이미지를 페이지에 삽입/교체']);
+  r = writeTableRow(sheet, r, ['전체 실행 (1→2→3)', '위 3단계를 순서대로 한 번에 실행']);
+  r++;
+
+  // --- 기본 워크플로우 ---
+  r = writeSection(sheet, r, '기본 워크플로우', secBg);
+  r = writeRow(sheet, r, 'A. 매월 새 달 준비', '1. [급식관리] > [전체 실행] 클릭\n2. 연월 입력 (예: 202603)\n3. 자동으로 날짜 생성 → 급식 입력 → 시간표 이미지 삽입', true);
+  r = writeRow(sheet, r, 'B. 시간표 수정 시', '1. 노션 DB에서 해당 날짜의 시간표 속성값 변경 (예: 2→5)\n2. [급식관리] > [3. 시간표 이미지 삽입] 실행\n3. 변경된 값에 해당하는 이미지로 자동 교체됨', true);
+  r++;
+
+  // --- 자동 트리거 ---
+  r = writeSection(sheet, r, '자동 트리거', secBg);
+  r = writeRow(sheet, r, '실행 조건', '매월 20일~말일 사이 매일 자동 실행\n다음 달 날짜 생성 + 급식 업데이트 수행\n20일 이전에는 자동 스킵', false);
+  r++;
+
+  // --- 시간표 이미지 매핑 ---
+  r = writeSection(sheet, r, '시간표 이미지 매핑', secBg);
+  r = writeTableHeader(sheet, r, ['속성값', '설명'], hdrBg, hdrFont);
+  r = writeTableRow(sheet, r, ['1', '화, 목 (기본값)']);
+  r = writeTableRow(sheet, r, ['2', '월, 수, 금 (기본값)']);
+  r = writeTableRow(sheet, r, ['3~8', '수동 지정']);
+  sheet.getRange(r, 1, 1, 2).merge()
+    .setValue('이미지 저장소: GitHub getbetterwithme/meal-to-notion/timetable/')
+    .setFontSize(9).setFontColor('#888888');
+  r += 2;
+
+  // --- 주의 사항 ---
+  r = writeSection(sheet, r, '주의 사항', warnBg);
+  r = writeRow(sheet, r, '필수 속성', '이름(제목), 날짜(날짜), 메뉴(텍스트), Month(선택), 시간표(선택, 값:1~8)', false);
+  r = writeRow(sheet, r, '급식 없는 달', 'NEIS에 데이터 미등록 시 2단계 0건. 추후 재실행', false);
+  r = writeRow(sheet, r, '권한 오류', '스크립트 첫 실행 시 구글 권한 승인 팝업에서 허용 필요', false);
+  r++;
+
+  // --- 문제 해결 ---
+  r = writeSection(sheet, r, '문제 해결', secBg);
+  r = writeTableHeader(sheet, r, ['증상', '해결'], hdrBg, hdrFont);
+  r = writeTableRow(sheet, r, ['페이지 생성 실패', '노션 DB ID와 API 토큰 확인 → initializeConfig() 재실행']);
+  r = writeTableRow(sheet, r, ['급식 데이터 없음', 'NEIS API 키와 학교 코드 확인']);
+  r = writeTableRow(sheet, r, ['이미지 미표시', 'GitHub 저장소에 이미지 파일 확인']);
+
+  SpreadsheetApp.flush();
+  Logger.log('사용설명서 작성 완료');
+}
+
+function writeSection(sheet, r, title, bg) {
+  sheet.getRange(r, 1, 1, 2).merge()
+    .setValue(title)
+    .setFontSize(13).setFontWeight('bold').setBackground(bg)
+    .setVerticalAlignment('middle');
+  sheet.setRowHeight(r, 32);
+  return r + 1;
+}
+
+function writeTableHeader(sheet, r, cols, bg, fontColor) {
+  cols.forEach((col, i) => {
+    sheet.getRange(r, i + 1).setValue(col)
+      .setFontWeight('bold').setBackground(bg).setFontColor(fontColor).setFontSize(10);
+  });
+  return r + 1;
+}
+
+function writeTableRow(sheet, r, cols) {
+  cols.forEach((col, i) => {
+    sheet.getRange(r, i + 1).setValue(col).setFontSize(10).setWrap(true);
+  });
+  return r + 1;
+}
+
+function writeRow(sheet, r, label, desc, isBold) {
+  sheet.getRange(r, 1).setValue(label).setFontWeight(isBold ? 'bold' : 'normal').setFontSize(10);
+  sheet.getRange(r, 2).setValue(desc).setFontSize(10).setWrap(true);
+  return r + 1;
+}
