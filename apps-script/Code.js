@@ -588,6 +588,13 @@ function writeManualSheet() {
   r = writeTableRow(sheet, r, ['페이지 생성 실패', '노션 DB ID와 API 토큰 확인 → initializeConfig() 재실행']);
   r = writeTableRow(sheet, r, ['급식 데이터 없음', 'NEIS API 키와 학교 코드 확인']);
   r = writeTableRow(sheet, r, ['이미지 미표시', 'GitHub 저장소에 이미지 파일 확인']);
+  r++;
+
+  // --- 링크 ---
+  r = writeSection(sheet, r, '관련 링크', secBg);
+  r = writeRow(sheet, r, '노션 데이터베이스', 'https://www.notion.so/juneywooky/2fecd3403dc38007a150fe08df7c5e8f', false);
+  r = writeRow(sheet, r, 'GitHub 저장소', 'https://github.com/getbetterwithme/meal-to-notion', false);
+  r = writeRow(sheet, r, 'Apps Script', 'https://script.google.com/d/1EH5MzU64_AxOQhJUdROvBFZz51kNNNFrIpN_U_LPiF3xgefYzyU0mDPw/edit', false);
 
   SpreadsheetApp.flush();
   Logger.log('사용설명서 작성 완료');
