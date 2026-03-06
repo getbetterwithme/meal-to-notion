@@ -23,6 +23,42 @@
 <h1>급식+시간표 통합 관리 시스템 사용 설명서</h1>
 <p style="font-size:13px; color:#666;">NEIS API → 노션 DB 자동화 도구 | 최종 업데이트: 2026-03-06</p>
 
+<h2>새 컴퓨터에서 이어서 작업하기</h2>
+<div class="step">
+  <div class="step-title">1단계: 저장소 가져오기</div>
+  <div class="step-desc">
+    터미널을 열고 아래 명령어 실행<br>
+    <b>처음 클론하는 경우:</b><br>
+    <code>git clone https://github.com/getbetterwithme/meal-to-notion.git</code><br><br>
+    <b>이미 폴더가 있는 경우 (최신화):</b><br>
+    <code>git pull origin main</code>
+  </div>
+</div>
+<div class="step">
+  <div class="step-title">2단계: clasp 설치 및 구글 로그인</div>
+  <div class="step-desc">
+    <code>npm install -g @google/clasp</code><br>
+    <code>clasp login</code><br>
+    → 브라우저가 열리면 구글 계정으로 허용
+  </div>
+</div>
+<div class="step">
+  <div class="step-title">3단계: .clasp.json 파일 만들기</div>
+  <div class="step-desc">
+    이 파일은 보안상 GitHub에 올라가지 않아서 직접 만들어야 해요.<br>
+    <code>apps-script/</code> 폴더 안에 <code>.clasp.json</code> 파일을 만들고 아래 내용 붙여넣기:<br><br>
+    <code>{ "scriptId": "1EH5MzU64_AxOQhJUdROvBFZz51kNNNFrIpN_U_LPiF3xgefYzyU0mDPw", "rootDir": "." }</code>
+  </div>
+</div>
+<div class="step">
+  <div class="step-title">4단계: Apps Script에 코드 반영</div>
+  <div class="step-desc">
+    <code>cd apps-script</code><br>
+    <code>clasp push</code><br>
+    → 이후부터 코드 수정 시 이 명령어로 Apps Script에 바로 반영
+  </div>
+</div>
+
 <h2>메뉴 구성</h2>
 <table>
   <tr><th>메뉴</th><th>기능</th></tr>

@@ -545,6 +545,14 @@ function writeManualSheet() {
   sheet.setRowHeight(r, 40);
   r += 2;
 
+  // --- 새 컴퓨터에서 이어서 작업하기 ---
+  r = writeSection(sheet, r, '새 컴퓨터에서 이어서 작업하기', '#fce8e6');
+  r = writeRow(sheet, r, '1단계: 저장소 가져오기', '처음: git clone https://github.com/getbetterwithme/meal-to-notion.git\n이미 있으면: git pull origin main', true);
+  r = writeRow(sheet, r, '2단계: clasp 설치 및 로그인', 'npm install -g @google/clasp\nclasp login  →  브라우저에서 구글 계정 허용', true);
+  r = writeRow(sheet, r, '3단계: .clasp.json 만들기', 'apps-script/ 폴더 안에 .clasp.json 파일 직접 생성 (GitHub에 안 올라감)\n내용: { "scriptId": "1EH5MzU64_AxOQhJUdROvBFZz51kNNNFrIpN_U_LPiF3xgefYzyU0mDPw", "rootDir": "." }', true);
+  r = writeRow(sheet, r, '4단계: Apps Script 반영', 'cd apps-script\nclasp push\n→ 이후 코드 수정 시마다 clasp push로 반영', true);
+  r++;
+
   // --- 메뉴 구성 ---
   r = writeSection(sheet, r, '메뉴 구성', secBg);
   r = writeTableHeader(sheet, r, ['메뉴', '기능'], hdrBg, hdrFont);
