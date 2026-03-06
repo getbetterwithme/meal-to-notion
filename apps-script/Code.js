@@ -38,15 +38,15 @@ function getConfig() {
 
 // ===== 이미지 URL 매핑 =====
 const TIMETABLE_IMAGES = {
-  '1_45m_6p':      'https://raw.githubusercontent.com/getbetterwithme/meal-to-notion/main/timetable/1_45m_6p.png',
-  '2_45m_7p':      'https://raw.githubusercontent.com/getbetterwithme/meal-to-notion/main/timetable/2_45m_7p.png',
-  '3_45m_4p_club': 'https://raw.githubusercontent.com/getbetterwithme/meal-to-notion/main/timetable/3_45m_4p_club.png',
-  '4_40m_6p':      'https://raw.githubusercontent.com/getbetterwithme/meal-to-notion/main/timetable/4_40m_6p.png',
-  '5_40m_7p':      'https://raw.githubusercontent.com/getbetterwithme/meal-to-notion/main/timetable/5_40m_7p.png',
-  '6_35m_6p':      'https://raw.githubusercontent.com/getbetterwithme/meal-to-notion/main/timetable/6_35m_6p.png',
-  '7_35m_7p':      'https://raw.githubusercontent.com/getbetterwithme/meal-to-notion/main/timetable/7_35m_7p.png',
-  '8_exam_3p':     'https://raw.githubusercontent.com/getbetterwithme/meal-to-notion/main/timetable/8_exam_3p.png',
-  '9_exam_2p':     'https://raw.githubusercontent.com/getbetterwithme/meal-to-notion/main/timetable/9_exam_2p.png'
+  '1_45m_6p':      'https://cdn.jsdelivr.net/gh/getbetterwithme/meal-to-notion@main/timetable/1_45m_6p.png',
+  '2_45m_7p':      'https://cdn.jsdelivr.net/gh/getbetterwithme/meal-to-notion@main/timetable/2_45m_7p.png',
+  '3_45m_4p_club': 'https://cdn.jsdelivr.net/gh/getbetterwithme/meal-to-notion@main/timetable/3_45m_4p_club.png',
+  '4_40m_6p':      'https://cdn.jsdelivr.net/gh/getbetterwithme/meal-to-notion@main/timetable/4_40m_6p.png',
+  '5_40m_7p':      'https://cdn.jsdelivr.net/gh/getbetterwithme/meal-to-notion@main/timetable/5_40m_7p.png',
+  '6_35m_6p':      'https://cdn.jsdelivr.net/gh/getbetterwithme/meal-to-notion@main/timetable/6_35m_6p.png',
+  '7_35m_7p':      'https://cdn.jsdelivr.net/gh/getbetterwithme/meal-to-notion@main/timetable/7_35m_7p.png',
+  '8_exam_3p':     'https://cdn.jsdelivr.net/gh/getbetterwithme/meal-to-notion@main/timetable/8_exam_3p.png',
+  '9_exam_2p':     'https://cdn.jsdelivr.net/gh/getbetterwithme/meal-to-notion@main/timetable/9_exam_2p.png'
 };
 
 const API_DELAY = 150; // Notion rate limit: 3req/s, 150ms면 안전
