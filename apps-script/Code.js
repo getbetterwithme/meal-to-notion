@@ -548,16 +548,16 @@ function writeManualSheet() {
   // --- 메뉴 구성 ---
   r = writeSection(sheet, r, '메뉴 구성', secBg);
   r = writeTableHeader(sheet, r, ['메뉴', '기능'], hdrBg, hdrFont);
-  r = writeTableRow(sheet, r, ['1. 날짜 페이지 생성', '해당 월 평일(월~금) 페이지를 노션 DB에 생성\n화목→시간표 "1", 월수금→시간표 "2" 자동 입력']);
+  r = writeTableRow(sheet, r, ['1. 날짜 페이지 생성', '해당 월 평일(월~금) 페이지를 노션 DB에 생성\n화목→SEED "1_45m_6p", 월수금→SEED "2_45m_7p" 자동 입력']);
   r = writeTableRow(sheet, r, ['2. 급식 메뉴 업데이트', 'NEIS API에서 급식 데이터를 가져와 기존 노션 페이지에 메뉴 업데이트']);
-  r = writeTableRow(sheet, r, ['3. 시간표 이미지 삽입', '각 페이지의 시간표 속성값(1~8)을 읽어 해당 이미지를 페이지에 삽입/교체']);
+  r = writeTableRow(sheet, r, ['3. 시간표 이미지 삽입', '각 페이지의 SEED 속성값을 읽어 해당 이미지를 페이지에 삽입/교체']);
   r = writeTableRow(sheet, r, ['전체 실행 (1→2→3)', '위 3단계를 순서대로 한 번에 실행']);
   r++;
 
   // --- 기본 워크플로우 ---
   r = writeSection(sheet, r, '기본 워크플로우', secBg);
   r = writeRow(sheet, r, 'A. 매월 새 달 준비', '1. [급식관리] > [전체 실행] 클릭\n2. 연월 입력 (예: 202603)\n3. 자동으로 날짜 생성 → 급식 입력 → 시간표 이미지 삽입', true);
-  r = writeRow(sheet, r, 'B. 시간표 수정 시', '1. 노션 DB에서 해당 날짜의 시간표 속성값 변경 (예: 2→5)\n2. [급식관리] > [3. 시간표 이미지 삽입] 실행\n3. 변경된 값에 해당하는 이미지로 자동 교체됨', true);
+  r = writeRow(sheet, r, 'B. 시간표 수정 시', '1. 노션 DB에서 해당 날짜의 SEED 속성값 변경 (예: 2_45m_7p → 4_40m_6p)\n2. [급식관리] > [3. 시간표 이미지 삽입] 실행\n3. 변경된 값에 해당하는 이미지로 자동 교체됨', true);
   r++;
 
   // --- 자동 트리거 ---
@@ -566,11 +566,17 @@ function writeManualSheet() {
   r++;
 
   // --- 시간표 이미지 매핑 ---
-  r = writeSection(sheet, r, '시간표 이미지 매핑', secBg);
-  r = writeTableHeader(sheet, r, ['속성값', '설명'], hdrBg, hdrFont);
-  r = writeTableRow(sheet, r, ['1', '화, 목 (기본값)']);
-  r = writeTableRow(sheet, r, ['2', '월, 수, 금 (기본값)']);
-  r = writeTableRow(sheet, r, ['3~8', '수동 지정']);
+  r = writeSection(sheet, r, '시간표 이미지 매핑 (SEED 속성)', secBg);
+  r = writeTableHeader(sheet, r, ['SEED 값', '기본 요일', '수업 형태'], hdrBg, hdrFont);
+  r = writeTableRow(sheet, r, ['1_45m_6p', '화, 목', '45분 × 6교시']);
+  r = writeTableRow(sheet, r, ['2_45m_7p', '월, 수, 금', '45분 × 7교시']);
+  r = writeTableRow(sheet, r, ['3_45m_4p_club', '수동 지정', '45분 × 4교시 + 동아리']);
+  r = writeTableRow(sheet, r, ['4_40m_6p', '수동 지정', '40분 × 6교시']);
+  r = writeTableRow(sheet, r, ['5_40m_7p', '수동 지정', '40분 × 7교시']);
+  r = writeTableRow(sheet, r, ['6_35m_6p', '수동 지정', '35분 × 6교시']);
+  r = writeTableRow(sheet, r, ['7_35m_7p', '수동 지정', '35분 × 7교시']);
+  r = writeTableRow(sheet, r, ['8_exam_3p', '수동 지정', '시험 × 3교시 (이미지 준비 중)']);
+  r = writeTableRow(sheet, r, ['9_exam_2p', '수동 지정', '시험 × 2교시 (이미지 준비 중)']);
   sheet.getRange(r, 1, 1, 2).merge()
     .setValue('이미지 저장소: GitHub getbetterwithme/meal-to-notion/timetable/')
     .setFontSize(9).setFontColor('#888888');
@@ -578,7 +584,7 @@ function writeManualSheet() {
 
   // --- 주의 사항 ---
   r = writeSection(sheet, r, '주의 사항', warnBg);
-  r = writeRow(sheet, r, '필수 속성', '이름(제목), 날짜(날짜), 메뉴(텍스트), Month(선택), 시간표(선택, 값:1~8)', false);
+  r = writeRow(sheet, r, '필수 속성', '이름(제목), 날짜(날짜), 메뉴(텍스트), Month(선택), SEED(선택, 값: 1_45m_6p 등)', false);
   r = writeRow(sheet, r, '급식 없는 달', 'NEIS에 데이터 미등록 시 2단계 0건. 추후 재실행', false);
   r = writeRow(sheet, r, '권한 오류', '스크립트 첫 실행 시 구글 권한 승인 팝업에서 허용 필요', false);
   r++;
